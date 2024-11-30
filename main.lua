@@ -1,51 +1,88 @@
+
 function love.load()
+
+    -- Maximize the window size
+    local desktopWidth, desktopHeight = love.window.getDesktopDimensions()
+    love.window.setMode(desktopWidth, desktopHeight, { fullscreen = false, resizable = true })
+
     animate = require 'libs/anim8'
 
+    -- List of character folders
+    local characters = { "Shinobi", "Fighter", "Samurai" }
+    
+    -- List of animation types with default duration
+    local animationTypes = {
+        { name = "Idle", duration = 0.05 },
+        { name = "Attack_1", duration = 0.1 },
+        { name = "Attack_2", duration = 0.25 },
+        { name = "Attack_3", duration = 0.15 },
+        { name = "Dead", duration = 0.5 },
+        { name = "Hurt", duration = 0.5 },
+        { name = "Jump", duration = 0.1 },
+        { name = "Run", duration = 0.1 },
+        { name = "Shield", duration = 0.1 },
+        { name = "Walk", duration = 0.1 }
+    }
+
+    -- Table to store animations for each character
     sprites = {}
-    sprites.shinobiIdle = love.graphics.newImage('sprites/Shinobi/Idle.png')
-    sprites.shinobiAttack1 = love.graphics.newImage('sprites/Shinobi/Attack_1.png')
-    sprites.shinobiAttack2 = love.graphics.newImage('sprites/Shinobi/Attack_2.png')
-    sprites.shinobiAttack3 = love.graphics.newImage('sprites/Shinobi/Attack_3.png')
-    sprites.shinobiDead = love.graphics.newImage('sprites/Shinobi/Dead.png')
-    sprites.shinobiHurt = love.graphics.newImage('sprites/Shinobi/Hurt.png')
-
-    local shinobiIdleGrid = animate.newGrid(128, 128, sprites.shinobiIdle:getWidth(), sprites.shinobiIdle:getHeight())
-    local shinobiAttack1Grid = animate.newGrid(128, 128, sprites.shinobiAttack1:getWidth(), sprites.shinobiAttack1:getHeight())
-    local shinobiAttack2Grid = animate.newGrid(128, 128, sprites.shinobiAttack2:getWidth(), sprites.shinobiAttack2:getHeight())
-    local shinobiAttack3Grid = animate.newGrid(128, 128, sprites.shinobiAttack3:getWidth(), sprites.shinobiAttack3:getHeight())
-    local shinobiDeadGrid = animate.newGrid(128, 128, sprites.shinobiDead:getWidth(), sprites.shinobiDead:getHeight())
-    local shinobiHurtGrid = animate.newGrid(128, 128, sprites.shinobiHurt:getWidth(), sprites.shinobiHurt:getHeight())
-
-
     animations = {}
-    animations.shinobiIdle = animate.newAnimation(shinobiIdleGrid('1-6', 1), 0.05)
 
-    animations.shinobiAttack1 = animate.newAnimation(shinobiAttack1Grid('1-5', 1), 0.1)
-    animations.shinobiAttack2 = animate.newAnimation(shinobiAttack2Grid('1-3', 1), 0.25)
-    animations.shinobiAttack3 = animate.newAnimation(shinobiAttack3Grid('1-4', 1), 0.15)
+    -- Load animations for each character
+    for _, character in ipairs(characters) do
+        sprites[character] = {}
+        animations[character] = {}
 
-    animations.shinobiDead = animate.newAnimation(shinobiDeadGrid('1-4', 1), 0.5)
-    animations.shinobiHurt = animate.newAnimation(shinobiHurtGrid('1-2', 1), 0.5)
+        for _, animType in ipairs(animationTypes) do
+            local imagePath = string.format("sprites/%s/%s.png", character, animType.name)
+            local spriteImage = love.graphics.newImage(imagePath)
+            sprites[character][animType.name] = spriteImage
 
-
+            -- Calculate frame count dynamically
+            local frameCount = spriteImage:getWidth() / 128
+            
+            local grid = animate.newGrid(128, 128, spriteImage:getWidth(), spriteImage:getHeight())
+            local frames = string.format("1-%d", frameCount)
+            animations[character][animType.name] = animate.newAnimation(grid(frames, 1), animType.duration)
+        end
+    end
 end
 
 function love.update(dt)
-    animations.shinobiIdle:update(dt)
-
-    animations.shinobiAttack1:update(dt)
-    animations.shinobiAttack2:update(dt)
-    animations.shinobiAttack3:update(dt)
-    animations.shinobiDead:update(dt)
-    animations.shinobiHurt:update(dt)
+    for _, characterAnimations in pairs(animations) do
+        for _, animation in pairs(characterAnimations) do
+            animation:update(dt)
+        end
+    end
 end
 
 function love.draw()
-    animations.shinobiIdle:draw(sprites.shinobiIdle, 100, 100)
 
-    animations.shinobiAttack1:draw(sprites.shinobiAttack1, 100, 200)
-    animations.shinobiAttack2:draw(sprites.shinobiAttack2, 200, 200)
-    animations.shinobiAttack3:draw(sprites.shinobiAttack3, 300, 200)
-    animations.shinobiHurt:draw(sprites.shinobiHurt, 100, 300)
-    animations.shinobiDead:draw(sprites.shinobiDead, 200, 300)
+    -- Set a gray background
+    love.graphics.clear(0.2, 0.2, 0.2)
+
+
+    local y = 100
+    local rowSpacing = 200 -- Add more spacing between rows
+
+    for character, characterAnimations in pairs(animations) do
+        local x = 100
+        for animType, animation in pairs(characterAnimations) do
+            -- Draw the animation
+            animation:draw(sprites[character][animType], x, y)
+
+            -- Draw the animated reflection below the animation
+            love.graphics.setColor(1, 1, 1, 0.5) -- Set transparency for reflection
+            animation:draw(
+                sprites[character][animType],
+                x, y + 260,                  -- Position below the original sprite
+                0,                          -- No rotation
+                1, -1                        -- Flip vertically
+            )
+            love.graphics.setColor(1, 1, 1, 1) -- Reset color to default
+            
+            x = x + 150 -- Spacing between animations in a row
+        end
+        y = y + rowSpacing -- Add spacing between rows
+    end
 end
